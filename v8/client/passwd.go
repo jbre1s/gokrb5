@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jbre1s/gokrb5/v8/kadmin"
 	"github.com/jbre1s/gokrb5/v8/messages"
@@ -59,13 +60,19 @@ func (cl *Client) sendToKPasswd(msg kadmin.Request) (r kadmin.Reply, err error) 
 		return
 	}
 	var rb []byte
+
+	timeout := 500 * time.Millisecond
+	if cl.settings.KDCResolveTimeout() != nil {
+		timeout = *cl.settings.KDCResolveTimeout()
+	}
+
 	if len(b) <= cl.Config.LibDefaults.UDPPreferenceLimit {
-		rb, err = dialSendUDP(kps, b, cl.settings.kdcResolveTimeout)
+		rb, err = dialSendUDP(kps, b, timeout)
 		if err != nil {
 			return
 		}
 	} else {
-		rb, err = dialSendTCP(kps, b, cl.settings.kdcResolveTimeout)
+		rb, err = dialSendTCP(kps, b, timeout)
 		if err != nil {
 			return
 		}
