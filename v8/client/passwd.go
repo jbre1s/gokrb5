@@ -2,9 +2,10 @@ package client
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/jcmturner/gokrb5/v8/kadmin"
-	"github.com/jcmturner/gokrb5/v8/messages"
+	"github.com/jbre1s/gokrb5/v8/kadmin"
+	"github.com/jbre1s/gokrb5/v8/messages"
 )
 
 // Kpasswd server response codes.
@@ -59,13 +60,19 @@ func (cl *Client) sendToKPasswd(msg kadmin.Request) (r kadmin.Reply, err error) 
 		return
 	}
 	var rb []byte
+
+	timeout := cl.settings.KDCResolveTimeout()
+	if timeout == 0 {
+		timeout = 500 * time.Millisecond
+	}
+
 	if len(b) <= cl.Config.LibDefaults.UDPPreferenceLimit {
-		rb, err = dialSendUDP(kps, b)
+		rb, err = dialSendUDP(kps, b, timeout)
 		if err != nil {
 			return
 		}
 	} else {
-		rb, err = dialSendTCP(kps, b)
+		rb, err = dialSendTCP(kps, b, timeout)
 		if err != nil {
 			return
 		}

@@ -19,13 +19,13 @@ import (
 	"testing"
 
 	"github.com/gorilla/sessions"
+	"github.com/jbre1s/gokrb5/v8/client"
+	"github.com/jbre1s/gokrb5/v8/config"
+	"github.com/jbre1s/gokrb5/v8/keytab"
+	"github.com/jbre1s/gokrb5/v8/service"
+	"github.com/jbre1s/gokrb5/v8/test"
+	"github.com/jbre1s/gokrb5/v8/test/testdata"
 	"github.com/jcmturner/goidentity/v6"
-	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/keytab"
-	"github.com/jcmturner/gokrb5/v8/service"
-	"github.com/jcmturner/gokrb5/v8/test"
-	"github.com/jcmturner/gokrb5/v8/test/testdata"
 	"github.com/stretchr/testify/assert"
 )
 

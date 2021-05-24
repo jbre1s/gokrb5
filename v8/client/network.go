@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jcmturner/gokrb5/v8/iana/errorcode"
-	"github.com/jcmturner/gokrb5/v8/messages"
+	"github.com/jbre1s/gokrb5/v8/iana/errorcode"
+	"github.com/jbre1s/gokrb5/v8/messages"
 )
 
 // SendToKDC performs network actions to send data to the KDC.
@@ -75,7 +75,13 @@ func (cl *Client) sendKDCUDP(realm string, b []byte) ([]byte, error) {
 	if err != nil {
 		return r, err
 	}
-	r, err = dialSendUDP(kdcs, b)
+
+	timeout := cl.settings.KDCResolveTimeout()
+	if timeout == 0 {
+		timeout = 500 * time.Millisecond
+	}
+
+	r, err = dialSendUDP(kdcs, b, timeout)
 	if err != nil {
 		return r, err
 	}
@@ -83,31 +89,35 @@ func (cl *Client) sendKDCUDP(realm string, b []byte) ([]byte, error) {
 }
 
 // dialSendUDP establishes a UDP connection to a KDC.
-func dialSendUDP(kdcs map[int]string, b []byte) ([]byte, error) {
+func dialSendUDP(kdcs map[int]string, b []byte, timeout time.Duration) ([]byte, error) {
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
-		udpAddr, err := net.ResolveUDPAddr("udp", kdcs[i])
+		hostPort := strings.Split(kdcs[i], ":")
+		ips, err := net.LookupIP(hostPort[0])
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("error resolving KDC address: %v", err))
+			errs = append(errs, fmt.Sprintf("error looking up for kdc %s: %v", kdcs[i], err))
 			continue
 		}
 
-		conn, err := net.DialTimeout("udp", udpAddr.String(), 5*time.Second)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("error setting dial timeout on connection to %s: %v", kdcs[i], err))
-			continue
+		for _, ip := range ips {
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", ip.String(), hostPort[1]), timeout)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("error connecting to address %s: %v", ip.String(), err))
+				continue
+			}
+
+			if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+				errs = append(errs, fmt.Sprintf("error setting deadline on connection to %s: %v", kdcs[i], err))
+				continue
+			}
+			// conn is guaranteed to be a UDPConn
+			rb, err := sendUDP(conn.(*net.UDPConn), b)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("error sending to %s: %v", kdcs[i], err))
+				continue
+			}
+			return rb, nil
 		}
-		if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
-			errs = append(errs, fmt.Sprintf("error setting deadline on connection to %s: %v", kdcs[i], err))
-			continue
-		}
-		// conn is guaranteed to be a UDPConn
-		rb, err := sendUDP(conn.(*net.UDPConn), b)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("error sneding to %s: %v", kdcs[i], err))
-			continue
-		}
-		return rb, nil
 	}
 	return nil, fmt.Errorf("error sending to a KDC: %s", strings.Join(errs, "; "))
 }
@@ -139,7 +149,13 @@ func (cl *Client) sendKDCTCP(realm string, b []byte) ([]byte, error) {
 	if err != nil {
 		return r, err
 	}
-	r, err = dialSendTCP(kdcs, b)
+
+	timeout := cl.settings.KDCResolveTimeout()
+	if cl.settings.KDCResolveTimeout() == 0 {
+		timeout = 500 * time.Millisecond
+	}
+
+	r, err = dialSendTCP(kdcs, b, timeout)
 	if err != nil {
 		return r, err
 	}
@@ -147,31 +163,35 @@ func (cl *Client) sendKDCTCP(realm string, b []byte) ([]byte, error) {
 }
 
 // dialKDCTCP establishes a TCP connection to a KDC.
-func dialSendTCP(kdcs map[int]string, b []byte) ([]byte, error) {
+func dialSendTCP(kdcs map[int]string, b []byte, timeout time.Duration) ([]byte, error) {
 	var errs []string
 	for i := 1; i <= len(kdcs); i++ {
-		tcpAddr, err := net.ResolveTCPAddr("tcp", kdcs[i])
+		hostPort := strings.Split(kdcs[i], ":")
+		ips, err := net.LookupIP(hostPort[0])
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("error resolving KDC address: %v", err))
+			errs = append(errs, fmt.Sprintf("error looking up for kdc %s: %v", kdcs[i], err))
 			continue
 		}
 
-		conn, err := net.DialTimeout("tcp", tcpAddr.String(), 5*time.Second)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("error setting dial timeout on connection to %s: %v", kdcs[i], err))
-			continue
+		for _, ip := range ips {
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", ip.String(), hostPort[1]), timeout)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("error connecting to address %s: %v", ip.String(), err))
+				continue
+			}
+
+			if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+				errs = append(errs, fmt.Sprintf("error setting deadline on connection to %s: %v", kdcs[i], err))
+				continue
+			}
+			// conn is guaranteed to be a TCPConn
+			rb, err := sendTCP(conn.(*net.TCPConn), b)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("error sending to %s: %v", kdcs[i], err))
+				continue
+			}
+			return rb, nil
 		}
-		if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
-			errs = append(errs, fmt.Sprintf("error setting deadline on connection to %s: %v", kdcs[i], err))
-			continue
-		}
-		// conn is guaranteed to be a TCPConn
-		rb, err := sendTCP(conn.(*net.TCPConn), b)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("error sneding to %s: %v", kdcs[i], err))
-			continue
-		}
-		return rb, nil
 	}
 	return nil, errors.New("error in getting a TCP connection to any of the KDCs")
 }
