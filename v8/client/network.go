@@ -155,7 +155,7 @@ func (cl *Client) sendKDCTCP(realm string, b []byte) ([]byte, error) {
 		timeout = 500 * time.Millisecond
 	}
 
-	r, err = dialSendUDP(kdcs, b, timeout)
+	r, err = dialSendTCP(kdcs, b, timeout)
 	if err != nil {
 		return r, err
 	}
