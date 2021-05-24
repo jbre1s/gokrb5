@@ -76,9 +76,9 @@ func (cl *Client) sendKDCUDP(realm string, b []byte) ([]byte, error) {
 		return r, err
 	}
 
-	timeout := 500 * time.Millisecond
-	if cl.settings.KDCResolveTimeout() != nil {
-		timeout = *cl.settings.KDCResolveTimeout()
+	timeout := cl.settings.KDCResolveTimeout()
+	if timeout == 0 {
+		timeout = 500 * time.Millisecond
 	}
 
 	r, err = dialSendUDP(kdcs, b, timeout)
@@ -150,9 +150,9 @@ func (cl *Client) sendKDCTCP(realm string, b []byte) ([]byte, error) {
 		return r, err
 	}
 
-	timeout := 500 * time.Millisecond
-	if cl.settings.KDCResolveTimeout() != nil {
-		timeout = *cl.settings.KDCResolveTimeout()
+	timeout := cl.settings.KDCResolveTimeout()
+	if cl.settings.KDCResolveTimeout() == 0 {
+		timeout = 500 * time.Millisecond
 	}
 
 	r, err = dialSendUDP(kdcs, b, timeout)

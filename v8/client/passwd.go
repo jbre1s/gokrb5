@@ -61,9 +61,9 @@ func (cl *Client) sendToKPasswd(msg kadmin.Request) (r kadmin.Reply, err error) 
 	}
 	var rb []byte
 
-	timeout := 500 * time.Millisecond
-	if cl.settings.KDCResolveTimeout() != nil {
-		timeout = *cl.settings.KDCResolveTimeout()
+	timeout := cl.settings.KDCResolveTimeout()
+	if timeout == 0 {
+		timeout = 500 * time.Millisecond
 	}
 
 	if len(b) <= cl.Config.LibDefaults.UDPPreferenceLimit {

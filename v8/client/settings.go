@@ -13,7 +13,7 @@ type Settings struct {
 	assumePreAuthentication bool
 	preAuthEType            int32
 	logger                  *log.Logger
-	kdcResolveTimeout       *time.Duration
+	kdcResolveTimeout       time.Duration
 }
 
 // jsonSettings is used when marshaling the Settings details to JSON format.
@@ -99,11 +99,11 @@ func (s *Settings) JSON() (string, error) {
 // s := NewSettings(KDCResolveTimeout(time.Millisecond * 100))
 func KDCResolveTimeout(duration time.Duration) func(*Settings) {
 	return func(s *Settings) {
-		*s.kdcResolveTimeout = duration
+		s.kdcResolveTimeout = duration
 	}
 }
 
 // KDCResolveTimeout indicates the client timeout for resolving the KDC address
-func (s *Settings) KDCResolveTimeout() *time.Duration {
+func (s *Settings) KDCResolveTimeout() time.Duration {
 	return s.kdcResolveTimeout
 }
